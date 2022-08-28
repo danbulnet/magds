@@ -1,0 +1,16 @@
+[package]
+name = "magds"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "magds"
+path = "src/lib.rs"
+
+[[bin]]
+name = "magds"
+path = "src/bin/main.rs"
+
+[dependencies]
+bionet-common = { git = "https://github.com/danbulnet/bionet-common.git", version = "0.1.0" }
+asa-graphs = { git = "https://github.com/danbulnet/asa-graphs.git", version = "0.1.0" }
