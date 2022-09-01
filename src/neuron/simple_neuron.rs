@@ -14,18 +14,18 @@ use bionet_common::{
     }
 };
 
-pub struct SimpleNeuron<Element: Neuron> {
+pub struct SimpleNeuron {
     pub id: NeuronID,
     pub activation: f32,
-    pub(crate) self_ptr: Weak<RefCell<SimpleNeuron<Element>>>,
+    pub(crate) self_ptr: Weak<RefCell<SimpleNeuron>>,
     pub(crate) definitions_from_self: 
         HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>>,
     pub(crate) definitions_to_self: 
         HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = dyn Neuron, To = Self>>>>
 }
 
-impl<Element: Neuron> SimpleNeuron<Element> {
-    pub fn new(id: &Rc<str>, parent_id: &Rc<str>) -> Rc<RefCell<SimpleNeuron<Element>>> {
+impl SimpleNeuron {
+    pub fn new(id: &Rc<str>, parent_id: &Rc<str>) -> Rc<RefCell<SimpleNeuron>> {
         let neuron_ptr = Rc::new(
             RefCell::new(
                 SimpleNeuron {
@@ -76,7 +76,7 @@ impl<Element: Neuron> SimpleNeuron<Element> {
     }
 }
 
-impl<Element: Neuron> Neuron for SimpleNeuron<Element> {
+impl Neuron for SimpleNeuron {
     fn id(&self) -> NeuronID { self.id.clone() }
 
     fn activation(&self) -> f32 { self.activation }
@@ -121,7 +121,7 @@ impl<Element: Neuron> Neuron for SimpleNeuron<Element> {
     }
 }
 
-impl<Element: Neuron + 'static> NeuronConnect for SimpleNeuron<Element> {
+impl NeuronConnect for SimpleNeuron {
     fn connect_to(
         &mut self, to: Rc<RefCell<dyn Neuron>>, kind: ConnectionKind
     ) -> Result<Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>, String> {
@@ -199,4 +199,26 @@ impl<Element: Neuron + 'static> NeuronConnect for SimpleNeuron<Element> {
             }
         }
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        rc::Rc,
+        cell::RefCell
+    };
+
+    use bionet_common::{
+        neuron::{ Neuron, NeuronConnect },
+        connection::ConnectionKind,
+        data::DataCategory
+    };
+
+    use asa_graphs::neural::{
+        element::Element,
+        graph::ASAGraph
+    };
+
+    use super::SimpleNeuron;
 }
