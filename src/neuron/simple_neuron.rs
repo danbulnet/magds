@@ -1,18 +1,27 @@
 use std::{
     rc::{ Rc, Weak },
     cell::RefCell,
-    collections::HashMap
+    collections::HashMap,
+    fmt::Display
 };
 
 use bionet_common::{
-    neuron::{ Neuron, NeuronID, NeuronConnect }, 
+    neuron::{ 
+        Neuron, 
+        NeuronID, 
+        NeuronConnect,
+        NeuronConnectBilateral
+    }, 
     connection::{
         Connection,
         ConnectionKind,
         ConnectionID,
         defining_connection::DefiningConnection
-    }
+    },
+    distances::Distance
 };
+
+use asa_graphs::neural::element::Element;
 
 pub struct SimpleNeuron {
     pub id: NeuronID,
@@ -139,6 +148,7 @@ impl NeuronConnect for SimpleNeuron {
                 )));
                 let connection_id = ConnectionID { from: self.id(), to: to.borrow().id() };
                 self.definitions_from_self.insert(connection_id, connection.clone());
+
                 Ok(connection)
             },
             _ => {
@@ -154,13 +164,14 @@ impl NeuronConnect for SimpleNeuron {
     ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         match to_connection.borrow().kind() {
             ConnectionKind::Defining => {
-                if to_connection.borrow().to().borrow().is_sensor() {
+                let to_neuron_ptr = to_connection.borrow().to().as_ptr();
+
+                if unsafe { (&*to_neuron_ptr).is_sensor() } {
                     let msg = "only defining connection from sensor to neuron can be created";
                     log::error!("{}", msg);
                     return Err(msg.to_string())
                 }
 
-                let to_neuron_ptr = to_connection.borrow().to().as_ptr();
                 let to_neuorn_id = unsafe { (&*to_neuron_ptr).id() };
                 let connection_id = ConnectionID { from: self.id(), to: to_neuorn_id };
                 self.definitions_from_self.insert(connection_id, to_connection.clone());
@@ -215,6 +226,107 @@ impl NeuronConnect for SimpleNeuron {
     }
 }
 
+impl<Key, const ORDER: usize> NeuronConnectBilateral<Element<Key, ORDER>> for SimpleNeuron 
+where Key: Clone + Display + Distance + PartialOrd + PartialEq, [(); ORDER + 1]: {
+    fn connect_bilateral_to(&mut self, to: Rc<RefCell<Element<Key, ORDER>>>, kind: ConnectionKind) 
+    -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
+        let msg = "only defining connection from Element to SimpleNeuron can be created";
+        log::error!("{}", msg);
+        Err(msg.to_string())
+    }
+
+    fn connect_bilateral_from(&mut self, from: Rc<RefCell<Element<Key, ORDER>>>, kind: ConnectionKind) 
+    -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
+        match kind {
+            ConnectionKind::Defining => {
+                match self.connect_from(from.clone(), kind) {
+                    Ok(connection) => {
+                        match from.borrow_mut().connect_to_connection(connection) {
+                            Ok(second_connection) => Ok(second_connection),
+                            Err(e) => {
+                                let msg = format!("error while creating second connection: {}", e);
+                                log::error!("{}", msg);
+                                Err(msg)
+                            }        
+                        }
+                    }
+                    Err(e) => {
+                        let msg = format!("error while creating connection: {}", e);
+                        log::error!("{}", msg);
+                        Err(msg)
+                    }
+                }
+            },
+            _ => {
+                let msg = "only defining connection from Element to SimpleNeuron can be created";
+                log::error!("{}", msg);
+                Err(msg.to_string())
+            }
+        }
+    }
+}
+
+impl NeuronConnectBilateral<SimpleNeuron> for SimpleNeuron {
+    fn connect_bilateral_to(&mut self, to: Rc<RefCell<SimpleNeuron>>, kind: ConnectionKind) 
+    -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
+        match kind {
+            ConnectionKind::Defining => {
+                match self.connect_to(to.clone(), kind) {
+                    Ok(connection) => {
+                        match to.borrow_mut().connect_from_connection(connection) {
+                            Ok(second_connection) => Ok(second_connection),
+                            Err(e) => {
+                                let msg = format!("error while creating second connection: {}", e);
+                                log::error!("{}", msg);
+                                Err(msg)
+                            }        
+                        }
+                    }
+                    Err(e) => {
+                        let msg = format!("error while creating connection: {}", e);
+                        log::error!("{}", msg);
+                        Err(msg)
+                    }
+                }
+            },
+            _ => {
+                let msg = "only defining connection Element -> SimpleNeuron can be created";
+                log::error!("{}", msg);
+                Err(msg.to_string())
+            }
+        }
+    }
+
+    fn connect_bilateral_from(&mut self, from: Rc<RefCell<SimpleNeuron>>, kind: ConnectionKind) 
+    -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
+        match kind {
+            ConnectionKind::Defining => {
+                match self.connect_from(from.clone(), kind) {
+                    Ok(connection) => {
+                        match from.borrow_mut().connect_to_connection(connection) {
+                            Ok(second_connection) => Ok(second_connection),
+                            Err(e) => {
+                                let msg = format!("error while creating second connection: {}", e);
+                                log::error!("{}", msg);
+                                Err(msg)
+                            }        
+                        }
+                    }
+                    Err(e) => {
+                        let msg = format!("error while creating connection: {}", e);
+                        log::error!("{}", msg);
+                        Err(msg)
+                    }
+                }
+            },
+            _ => {
+                let msg = "only defining connection Element -> SimpleNeuron can be created";
+                log::error!("{}", msg);
+                Err(msg.to_string())
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -224,7 +336,7 @@ mod tests {
     };
 
     use bionet_common::{
-        neuron::{ Neuron, NeuronConnect },
+        neuron::{ Neuron, NeuronConnect, NeuronConnectBilateral },
         connection::ConnectionKind
     };
 
@@ -417,5 +529,116 @@ mod tests {
         assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
         assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
         assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+    }
+
+    #[test]
+    fn connect_bilateral_to_sensor() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2: Rc<RefCell<Element<i32, 3>>> = Element::new(&1, &Rc::from("test"));
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_to(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_err());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+    }
+
+    #[test]
+    fn connect_bilateral_from_sensor() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2: Rc<RefCell<Element<i32, 3>>> = Element::new(&1, &Rc::from("test"));
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_from(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 1);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 1);
+    }
+
+    #[test]
+    fn connect_bilateral_to_neuron() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_to(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 1);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+    }
+
+    #[test]
+    fn connect_bilateral_from_neuron() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_from(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 1);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+    }
+
+    #[test]
+    fn connect_wrong() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+        let sensor: Rc<RefCell<Element<i32, 3>>> = Element::new(&1, &Rc::from("test"));
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_from(
+            neuron_2.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_to(
+            neuron_2.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_to(
+            neuron_2.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_from(
+            neuron_2.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_from(
+            sensor.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_to(
+            sensor.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
+
+        let connection_1 = neuron_1.borrow_mut().connect_bilateral_to(
+            sensor.clone(), ConnectionKind::Inhibitory
+        );
+        assert!(connection_1.is_err());
     }
 }
