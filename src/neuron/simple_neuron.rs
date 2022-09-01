@@ -19,9 +19,9 @@ pub struct SimpleNeuron {
     pub activation: f32,
     pub(crate) self_ptr: Weak<RefCell<SimpleNeuron>>,
     pub(crate) definitions_from_self: 
-        HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>>,
+        HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>>,
     pub(crate) definitions_to_self: 
-        HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = dyn Neuron, To = Self>>>>
+        HashMap<ConnectionID, Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>>
 }
 
 impl SimpleNeuron {
@@ -124,11 +124,17 @@ impl Neuron for SimpleNeuron {
 impl NeuronConnect for SimpleNeuron {
     fn connect_to(
         &mut self, to: Rc<RefCell<dyn Neuron>>, kind: ConnectionKind
-    ) -> Result<Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>, String> {
+    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         match kind {
             ConnectionKind::Defining => {
+                if to.borrow().is_sensor() {
+                    let msg = "only defining connection from sensor to neuron can be created";
+                    log::error!("{}", msg);
+                    return Err(msg.to_string())
+                }
+
                 let connection = Rc::new(RefCell::new(DefiningConnection::new(
-                    self.self_ptr.upgrade().unwrap(), 
+                    self.self_ptr.upgrade().unwrap() as Rc<RefCell<dyn Neuron>>, 
                     to.clone()
                 )));
                 let connection_id = ConnectionID { from: self.id(), to: to.borrow().id() };
@@ -144,12 +150,19 @@ impl NeuronConnect for SimpleNeuron {
     }
 
     fn connect_to_connection(
-        &mut self, to_connection: Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>
-    ) -> Result<Rc<RefCell<dyn Connection<From = Self, To = dyn Neuron>>>, String> {
+        &mut self, to_connection: Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>
+    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         match to_connection.borrow().kind() {
             ConnectionKind::Defining => {
-                let to_neuron = to_connection.borrow().to().clone();
-                let connection_id = ConnectionID { from: self.id(), to: to_neuron.borrow().id() };
+                if to_connection.borrow().to().borrow().is_sensor() {
+                    let msg = "only defining connection from sensor to neuron can be created";
+                    log::error!("{}", msg);
+                    return Err(msg.to_string())
+                }
+
+                let to_neuron_ptr = to_connection.borrow().to().as_ptr();
+                let to_neuorn_id = unsafe { (&*to_neuron_ptr).id() };
+                let connection_id = ConnectionID { from: self.id(), to: to_neuorn_id };
                 self.definitions_from_self.insert(connection_id, to_connection.clone());
                 Ok(to_connection.clone())
             },
@@ -163,12 +176,12 @@ impl NeuronConnect for SimpleNeuron {
 
     fn connect_from(
         &mut self, from: Rc<RefCell<dyn Neuron>>, kind: ConnectionKind
-    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = Self>>>, String> {
+    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         match kind {
             ConnectionKind::Defining => {
                 let connection = Rc::new(RefCell::new(DefiningConnection::new(
                     from.clone(),
-                    self.self_ptr.upgrade().unwrap()
+                    self.self_ptr.upgrade().unwrap() as Rc<RefCell<dyn Neuron>>
                 )));
                 let connection_id = ConnectionID { from: from.borrow().id(), to: self.id() };
                 self.definitions_to_self.insert(connection_id, connection.clone());
@@ -183,12 +196,13 @@ impl NeuronConnect for SimpleNeuron {
     }
 
     fn connect_from_connection(
-        &mut self, from_connection: Rc<RefCell<dyn Connection<From = dyn Neuron, To = Self>>>
-    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = Self>>>, String> {
+        &mut self, from_connection: Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>
+    ) -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         match from_connection.borrow().kind() {
             ConnectionKind::Defining => {
-                let from_neuron = from_connection.borrow().from().clone();
-                let connection_id = ConnectionID { from: from_neuron.borrow().id(), to: self.id() };
+                let from_neuron_ptr = from_connection.borrow().from().as_ptr();
+                let from_neuorn_id = unsafe { (&*from_neuron_ptr).id() };
+                let connection_id = ConnectionID { from: from_neuorn_id, to: self.id() };
                 self.definitions_to_self.insert(connection_id, from_connection.clone());
                 Ok(from_connection.clone())
             },
@@ -211,14 +225,197 @@ mod tests {
 
     use bionet_common::{
         neuron::{ Neuron, NeuronConnect },
-        connection::ConnectionKind,
-        data::DataCategory
+        connection::ConnectionKind
     };
 
     use asa_graphs::neural::{
         element::Element,
-        graph::ASAGraph
     };
 
     use super::SimpleNeuron;
+
+    #[test]
+    fn as_neuron() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+
+        let neuron_1_id = neuron_1.borrow().id();
+        assert_eq!(neuron_1_id.id.to_string(), "neuron_1".to_string());
+        assert_eq!(neuron_1_id.parent_id.to_string(), parent_name.to_string());
+        let neuron_2_id = neuron_2.borrow().id();
+        assert_eq!(neuron_2_id.id.to_string(), "neuron_2".to_string());
+        assert_eq!(neuron_2_id.parent_id.to_string(), parent_name.to_string());
+
+        assert_eq!(neuron_1.borrow().is_sensor(), false);
+
+        assert_eq!(neuron_1.borrow().activation(), 0.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+
+        assert_eq!(neuron_1.borrow().counter(), 1usize);
+        
+        let connection = neuron_1
+            .borrow_mut().connect_to(neuron_2.clone(), ConnectionKind::Defining).unwrap();
+        assert_eq!(
+            connection.borrow().from().as_ptr() as *const () as usize, 
+            neuron_1.as_ptr() as *const () as usize
+        );
+        assert_eq!(
+            connection.borrow().to().as_ptr() as *const () as usize, 
+            neuron_2.as_ptr() as *const () as usize
+        );
+
+        let activated = neuron_1.borrow_mut().activate(1.0f32, true, true);
+        assert_eq!(activated.len(), 1);
+        assert_eq!(neuron_1.borrow().activation(), 1.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 1.0f32);
+
+        neuron_1.borrow_mut().activate(1.0f32, false, true);
+        assert_eq!(neuron_1.borrow().activation(), 2.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 3.0f32);
+        neuron_1.borrow_mut().deactivate(true, true);
+        assert_eq!(neuron_1.borrow().activation(), 0.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+
+        neuron_1.borrow_mut().activate(1.0f32, true, false);
+        assert_eq!(neuron_1.borrow().activation(), 1.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+        neuron_1.borrow_mut().deactivate(false, true);
+        assert_eq!(neuron_1.borrow().activation(), 0.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+
+        neuron_1.borrow_mut().activate(1.0f32, false, false);
+        assert_eq!(neuron_1.borrow().activation(), 1.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+        neuron_1.borrow_mut().deactivate(true, false);
+        assert_eq!(neuron_1.borrow().activation(), 0.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 0.0f32);
+
+        neuron_1.borrow_mut().activate(1.0f32, true, true);
+        assert_eq!(neuron_1.borrow().activation(), 1.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 1.0f32);
+        neuron_1.borrow_mut().deactivate(false, false);
+        assert_eq!(neuron_1.borrow().activation(), 0.0f32);
+        assert_eq!(neuron_2.borrow().activation(), 1.0f32);
+
+        let exp_1 = neuron_1.borrow_mut().explain();
+        assert_eq!(exp_1.len(), 0);
+    }
+
+    #[test]
+    fn connect_from_neuron() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+
+        let connection_1 = neuron_1.borrow_mut().connect_from(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+        let connection_1 = connection_1.unwrap();
+        let connection_2 = neuron_2.borrow_mut().connect_to_connection(connection_1.clone());
+        assert!(connection_2.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 1);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+        assert_eq!(
+            connection_1.borrow().from().as_ptr() as *const () as usize, 
+            neuron_2.as_ptr() as *const () as usize
+        );
+        assert_eq!(
+            connection_1.borrow().to().as_ptr() as *const () as usize, 
+            neuron_1.as_ptr() as *const () as usize
+        );
+    }
+
+    #[test]
+    fn connect_to_neuron() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+
+        let connection_1 = neuron_1.borrow_mut().connect_to(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+        let connection_1 = connection_1.unwrap();
+        let connection_2 = neuron_2.borrow_mut().connect_from_connection(connection_1.clone());
+        assert!(connection_2.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 1);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_2.borrow().defining_neurons().len(), 1);
+        assert_eq!(neuron_2.borrow().defining_sensors().len(), 0);
+        assert_eq!(
+            connection_1.borrow().from().as_ptr() as *const () as usize, 
+            neuron_1.as_ptr() as *const () as usize
+        );
+        assert_eq!(
+            connection_1.borrow().to().as_ptr() as *const () as usize, 
+            neuron_2.as_ptr() as *const () as usize
+        );
+    }
+
+    #[test]
+    fn connect_from_sensor() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2: Rc<RefCell<Element<i32, 3>>> = Element::new(&1, &Rc::from("test"));
+
+        let connection_1 = neuron_1.borrow_mut().connect_from(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 1);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+        let connection_1 = connection_1.unwrap();
+        let connection_2 = neuron_2.borrow_mut().connect_to_connection(connection_1.clone());
+        assert!(connection_2.is_ok());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 1);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 1);
+        assert_eq!(
+            connection_1.borrow().from().as_ptr() as *const () as usize, 
+            neuron_2.as_ptr() as *const () as usize
+        );
+        assert_eq!(
+            connection_1.borrow().to().as_ptr() as *const () as usize, 
+            neuron_1.as_ptr() as *const () as usize
+        );
+    }
+
+    #[test]
+    fn connect_to_sensor() {
+        let parent_name = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
+        let neuron_2: Rc<RefCell<Element<i32, 3>>> = Element::new(&1, &Rc::from("test"));
+
+        let connection_1 = neuron_1.borrow_mut().connect_to(
+            neuron_2.clone(), ConnectionKind::Defining
+        );
+        assert!(connection_1.is_err());
+        assert_eq!(neuron_1.borrow().defined_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_neurons().len(), 0);
+        assert_eq!(neuron_1.borrow().defining_sensors().len(), 0);
+        assert_eq!(neuron_2.borrow().defined_neurons().len(), 0);
+    }
 }
