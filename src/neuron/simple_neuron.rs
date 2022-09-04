@@ -1,8 +1,7 @@
 use std::{
     rc::{ Rc, Weak },
     cell::RefCell,
-    collections::HashMap,
-    fmt::Display
+    collections::HashMap
 };
 
 use bionet_common::{
@@ -18,7 +17,7 @@ use bionet_common::{
         ConnectionID,
         defining_connection::DefiningConnection
     },
-    distances::Distance
+    sensor::SensorDataDynamic
 };
 
 use asa_graphs::neural::element::Element;
@@ -227,8 +226,8 @@ impl NeuronConnect for SimpleNeuron {
 }
 
 impl<Key, const ORDER: usize> NeuronConnectBilateral<Element<Key, ORDER>> for SimpleNeuron 
-where Key: Clone + Display + Distance + PartialOrd + PartialEq, [(); ORDER + 1]: {
-    fn connect_bilateral_to(&mut self, to: Rc<RefCell<Element<Key, ORDER>>>, kind: ConnectionKind) 
+where Key: SensorDataDynamic, [(); ORDER + 1]: {
+    fn connect_bilateral_to(&mut self, _to: Rc<RefCell<Element<Key, ORDER>>>, _kind: ConnectionKind) 
     -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         let msg = "only defining connection from Element to SimpleNeuron can be created";
         log::error!("{}", msg);
