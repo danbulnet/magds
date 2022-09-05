@@ -21,14 +21,15 @@ impl MAGDS {
     }
 
     pub fn add_sensor<T: SensorDataDynamic>(&mut self, sensor: Rc<RefCell<dyn SensorDynamic<Data = T>>>) {
-        let sensor_dyn = unsafe { 
-            std::mem::transmute_copy::<
+        let sensor_name = Rc::from(sensor.borrow().name());
+        let sensor_dyn = unsafe {
+            std::mem::transmute::<
                 Rc<RefCell<dyn SensorDynamic<Data = T>>>, 
                 Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>
-            >(&sensor) 
+            >(sensor)
         };
         self.sensors.insert(
-            Rc::from(sensor.borrow().name()),
+            sensor_name,
             sensor_dyn
         );
     }
@@ -47,9 +48,9 @@ impl MAGDS {
     }
 
     // experimental
-    pub unsafe fn sensor_base<D: SensorDataDynamic, T: SensorDynamic>(
+    pub fn sensor_base<D: SensorDataDynamic, T: SensorDynamic>(
         &self, name: &str
-    ) -> Rc<RefCell<T>> {
+    ) -> *mut T {
         let sensor = self.sensors[&Rc::from(name)].clone();
         <dyn SensorDynamic<Data = D> as SensorStaticDowncast::<T>>::sensor_static_downcast(
             sensor.clone()
@@ -107,15 +108,16 @@ mod tests {
         sensor_1_from_magds.borrow_mut().insert(&11);
         sensor_1_from_magds.borrow_mut().insert(&12);
 
-        let sensor_1_base_from_magds: Rc<RefCell<ASAGraph<i32, 25>>> = unsafe {
-            magds.sensor_base::<i32, ASAGraph<i32, 25>>("test") 
-        };
-        sensor_1_base_from_magds.borrow_mut().insert(&13);
-        sensor_1_base_from_magds.borrow_mut().insert(&14);
-        sensor_1_base_from_magds.borrow_mut().insert(&15);
-        assert_eq!(sensor_1_base_from_magds.borrow().count_elements_unique(), 15);
-        for (i, el) in sensor_1_base_from_magds.borrow().into_iter().enumerate() {
-            assert_eq!(el.borrow().key, i as i32 + 1);
+        unsafe {
+            let sensor_1_base_from_magds: *mut ASAGraph<i32, 25> = 
+                magds.sensor_base::<i32, ASAGraph<i32, 25>>("test");
+            (&mut *sensor_1_base_from_magds).insert(&13);
+            (&mut *sensor_1_base_from_magds).insert(&14);
+            (&mut *sensor_1_base_from_magds).insert(&15);
+            assert_eq!((&*sensor_1_base_from_magds).count_elements_unique(), 15);
+            for (i, el) in (&*sensor_1_base_from_magds).into_iter().enumerate() {
+                assert_eq!(el.borrow().key, i as i32 + 1);
+            }
         }
 
         let sensor_2_from_magds = magds.sensor("test_string");
@@ -123,12 +125,13 @@ mod tests {
         sensor_2_from_magds.borrow_mut().insert(&11.to_string());
         sensor_2_from_magds.borrow_mut().insert(&12.to_string());
 
-        let sensor_2_base_from_magds: Rc<RefCell<ASAGraph<String, 3>>> = unsafe { 
-            magds.sensor_base::<String, ASAGraph<String, 3>>("test_string") 
-        };
-        sensor_2_base_from_magds.borrow_mut().insert(&13.to_string());
-        sensor_2_base_from_magds.borrow_mut().insert(&14.to_string());
-        sensor_2_base_from_magds.borrow_mut().insert(&15.to_string());
-        assert_eq!(sensor_2_base_from_magds.borrow().count_elements_unique(), 15);
+        unsafe {
+            let sensor_2_base_from_magds: *mut ASAGraph<String, 3> =
+                magds.sensor_base::<String, ASAGraph<String, 3>>("test_string");
+            (&mut *sensor_2_base_from_magds).insert(&13.to_string());
+            (&mut *sensor_2_base_from_magds).insert(&14.to_string());
+            (&mut *sensor_2_base_from_magds).insert(&15.to_string());
+            assert_eq!((&*sensor_2_base_from_magds).count_elements_unique(), 15);
+        }
     }
 }
