@@ -20,7 +20,7 @@ impl MAGDS {
     }
 
     pub fn add_sensor<T: SensorDataDynamic>(&mut self, sensor: Rc<RefCell<dyn SensorDynamic<Data = T>>>) {
-        let sensor_name = Rc::from(sensor.borrow().name());
+        let sensor_id = Rc::from(sensor.borrow().id());
         let sensor_dyn = unsafe {
             std::mem::transmute::<
                 Rc<RefCell<dyn SensorDynamic<Data = T>>>, 
@@ -28,7 +28,7 @@ impl MAGDS {
             >(sensor)
         };
         self.sensors.insert(
-            sensor_name,
+            sensor_id,
             sensor_dyn
         );
     }
@@ -39,34 +39,46 @@ impl MAGDS {
 
     pub fn sensor<T: SensorDataDynamic>(
         &self, name: &str
-    ) -> Rc<RefCell<dyn SensorDynamic<Data = T>>> {
-        let sensor = self.sensors[&Rc::from(name)].clone();
-        <dyn SensorDynamic<Data = T> as SensorDynamicDowncast::<T>>::sensor_dynamic_downcast(
-            sensor.clone()
+    ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = T>>>> {
+        let sensor = self.sensors.get(&Rc::from(name))?.clone();
+        Some(
+            <dyn SensorDynamic<Data = T> as SensorDynamicDowncast::<T>>
+                ::sensor_dynamic_downcast(sensor)
         )
     }
 
     // experimental
     pub unsafe fn sensor_base<D: SensorDataDynamic, T: SensorDynamic>(
         &self, name: &str
-    ) -> &mut T {
-        let sensor = self.sensors[&Rc::from(name)].clone();
+    ) -> Option<&mut T> {
+        let sensor = self.sensors.get(&Rc::from(name))?.clone();
         let ptr = <
             dyn SensorDynamic<Data = D> as SensorStaticDowncast::<T>
         >::sensor_static_downcast( sensor.clone() );
-        &mut *ptr
+        Some(&mut *ptr)
+    }
+
+    pub fn neuron_from_id(&self, id: &NeuronID) -> Option<Rc<RefCell<dyn Neuron>>> {
+        Some(self.neurons.get(id)?.clone())
+    }
+
+    pub fn neuron(&self, id: &str, parent_id: &str) -> Option<Rc<RefCell<dyn Neuron>>> {
+        Some(self.neurons.get(&NeuronID::new(id, parent_id))?.clone())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
+    use std::{
+        rc::Rc
+    };
 
     use asa_graphs::neural::graph::ASAGraph;
     
     use bionet_common::{
         data::DataCategory,
-        sensor::SensorDynamicBuilder
+        sensor::SensorDynamicBuilder,
+        neuron::NeuronID
     };
     
     use crate::neuron::simple_neuron::SimpleNeuron;
@@ -100,14 +112,14 @@ mod tests {
         magds.add_neuron(neuron_1);
         magds.add_neuron(neuron_2);
 
-        let sensor_1_from_magds = magds.sensor("test");
+        let sensor_1_from_magds = magds.sensor("test").unwrap();
         sensor_1_from_magds.borrow_mut().insert(&10);
         sensor_1_from_magds.borrow_mut().insert(&11);
         sensor_1_from_magds.borrow_mut().insert(&12);
 
         unsafe {
             let sensor_1_base_from_magds: &mut ASAGraph<i32, 25> = 
-                magds.sensor_base::<i32, ASAGraph<i32, 25>>("test");
+                magds.sensor_base::<i32, ASAGraph<i32, 25>>("test").unwrap();
             sensor_1_base_from_magds.insert(&13);
             sensor_1_base_from_magds.insert(&14);
             sensor_1_base_from_magds.insert(&15);
@@ -117,18 +129,24 @@ mod tests {
             }
         }
 
-        let sensor_2_from_magds = magds.sensor("test_string");
+        let sensor_2_from_magds = magds.sensor("test_string").unwrap();
         sensor_2_from_magds.borrow_mut().insert(&10.to_string());
         sensor_2_from_magds.borrow_mut().insert(&11.to_string());
         sensor_2_from_magds.borrow_mut().insert(&12.to_string());
 
         unsafe {
             let sensor_2_base_from_magds: &mut ASAGraph<String, 3> =
-                magds.sensor_base::<String, ASAGraph<String, 3>>("test_string");
+                magds.sensor_base::<String, ASAGraph<String, 3>>("test_string").unwrap();
             sensor_2_base_from_magds.insert(&13.to_string());
             sensor_2_base_from_magds.insert(&14.to_string());
             sensor_2_base_from_magds.insert(&15.to_string());
             assert_eq!(sensor_2_base_from_magds.count_elements_unique(), 15);
         }
+
+        let neuron_1_id = NeuronID::new("neuron_1", "test");
+        let neuron_1_from_magds = magds.neuron_from_id(&neuron_1_id).unwrap();
+        assert_eq!(neuron_1_from_magds.borrow().id(), neuron_1_id);
+        let neuron_1_from_magds = magds.neuron("neuron_1", "test").unwrap();
+        assert_eq!(neuron_1_from_magds.borrow().id(), neuron_1_id);
     }
 }
