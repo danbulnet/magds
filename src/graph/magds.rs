@@ -18,6 +18,10 @@ impl MAGDS {
     pub fn new() -> MAGDS {
         MAGDS { sensors: HashMap::new(), neurons: HashMap::new() }
     }
+    
+    pub fn new_rc() -> Rc<RefCell<MAGDS>> {
+        Rc::new(RefCell::new(MAGDS { sensors: HashMap::new(), neurons: HashMap::new() }))
+    }
 
     pub fn add_sensor<T: SensorDataDynamic>(&mut self, sensor: Rc<RefCell<dyn SensorDynamic<Data = T>>>) {
         let sensor_id = Rc::from(sensor.borrow().id());
@@ -45,6 +49,12 @@ impl MAGDS {
             <dyn SensorDynamic<Data = T> as SensorDynamicDowncast::<T>>
                 ::sensor_dynamic_downcast(sensor)
         )
+    }
+
+    pub fn sensor_dynamic(
+        &self, name: &str
+    ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>> {
+        Some(self.sensors.get(&Rc::from(name))?.clone())
     }
 
     // experimental
