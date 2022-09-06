@@ -14,7 +14,7 @@ use bionet_common::{
 
 use crate::graph::magds::MAGDS;
 
-pub(crate) fn asagraph_from_vec(
+pub(crate) fn asagraph_from_datavec(
     magds: &mut MAGDS, id: &str, data: &DataVec
 ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>> {
     match data {
@@ -24,57 +24,57 @@ pub(crate) fn asagraph_from_vec(
         }
         DataVec::BoolVec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::UInt8Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::UInt16Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::UInt32Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::UInt64Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Int8Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Int16Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Int32Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Int64Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Float32Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Float64Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
         DataVec::Utf8Vec(vec) => {
             let data_category = DataCategory::from(&vec[..]);
-            asagraph_from_vec_inner(magds, id, data_category, vec);
+            asagraph_from_datavec_inner(magds, id, data_category, vec);
         }
     }
     magds.sensor_dynamic(id)
 }
 
-fn asagraph_from_vec_inner<T: SensorDataDynamic>(
+fn asagraph_from_datavec_inner<T: SensorDataDynamic>(
     magds: &mut MAGDS, id: &str, data_category: DataCategory, data: &Vec<T>
 ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = T>>>> {
     let graph = ASAGraph::<_, 25>::new_rc_from_vec(id, data_category, &data[..]);
@@ -97,8 +97,7 @@ mod tests {
 
     #[test]
     fn csv_to_dataframe() {
-        let working_dir = std::env::current_dir().unwrap();
-        println!("{}", working_dir.display());
+        let mut magds = MAGDS::new();
 
         let filename = "data/iris.csv";
         let df = polars_common::csv_to_dataframe(filename);
@@ -106,27 +105,30 @@ mod tests {
         let df = df.unwrap();
         println!("{}", df);
 
-        let cd = df.column("sepal.length").unwrap();
-        let cdvv = polars_common::series_to_vec(cd).unwrap();
-        println!("{}", cd);
-        let cddt = cd.dtype();
-
-        assert_eq!(*cddt, DataType::Float64);
-
-        let s: Vec<Option<f64>> = cd.f64().unwrap().into_iter().collect();
-        println!("{}", cd);
-
-        let v = df.column("variety").unwrap();
-        println!("{}", v);
-        println!("v_dtype: {}", v.dtype());
-        assert_eq!(*v.dtype(), DataType::Utf8);
-        let vv = polars_common::series_to_vec(v).unwrap();
-        let mut magds = MAGDS::new();
-        let graph = super::asagraph_from_vec(&mut magds, "test", &vv);
+        let variety_df = df.column("variety").unwrap();
+        assert_eq!(*variety_df.dtype(), DataType::Utf8);
+        let variety_df_datavec = polars_common::series_to_datavec(variety_df).unwrap();
+        let _graph = super::asagraph_from_datavec(&mut magds, "variety", &variety_df_datavec);
         unsafe {
             let vv_from_magds: &mut ASAGraph<String, 25> =
-                magds.sensor_base::<String, ASAGraph<String, 25>>("test").unwrap();
+                magds.sensor_base::<String, ASAGraph<String, 25>>("variety").unwrap();
             vv_from_magds.print_graph();
         }
+        assert!(magds.sensor::<String>("variety").is_some());
+        let variety_from_magds = magds.sensor::<String>("variety").unwrap();
+        let versicolor_result = variety_from_magds.borrow().search(&"Versicolor".to_string());
+        assert!(versicolor_result.is_some());
+        assert_eq!(versicolor_result.unwrap().borrow().counter(), 50);
+
+        
+        let sepal_length_df = df.column("sepal.length").unwrap();
+        assert_eq!(*sepal_length_df.dtype(), DataType::Float64);
+        let sepal_length_df_datavec = polars_common::series_to_datavec(sepal_length_df).unwrap();
+        let _graph = super::asagraph_from_datavec(&mut magds, "sepal.length", &sepal_length_df_datavec);
+        assert!(magds.sensor::<f64>("sepal.length").is_some());
+        let sepal_length_from_magds = magds.sensor::<f64>("sepal.length").unwrap();
+        let versicolor_result = sepal_length_from_magds.borrow().search(&5.8_f64);
+        assert!(versicolor_result.is_some());
+        assert_eq!(versicolor_result.unwrap().borrow().counter(), 7);
     }
 }
