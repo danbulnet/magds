@@ -6,11 +6,11 @@ use std::{
 
 use bionet_common::{
     neuron::{ Neuron, NeuronID },
-    sensor::{ SensorDynamic, SensorDataDynamic, SensorDynamicDowncast, SensorStaticDowncast }
+    sensor::{ Sensor, SensorData, SensorDynamicDowncast, SensorStaticDowncast }
 };
 
 pub struct MAGDS {
-    pub(crate) sensors: HashMap<Rc<str>, Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>>,
+    pub(crate) sensors: HashMap<Rc<str>, Rc<RefCell<dyn Sensor<dyn SensorData>>>>,
     pub(crate) neurons: HashMap<NeuronID, Rc<RefCell<dyn Neuron>>>,
 }
 
@@ -23,12 +23,12 @@ impl MAGDS {
         Rc::new(RefCell::new(MAGDS { sensors: HashMap::new(), neurons: HashMap::new() }))
     }
 
-    pub fn add_sensor<T: SensorDataDynamic>(&mut self, sensor: Rc<RefCell<dyn SensorDynamic<Data = T>>>) {
+    pub fn add_sensor<T: SensorData>(&mut self, sensor: Rc<RefCell<dyn Sensor<T>>>) {
         let sensor_id = Rc::from(sensor.borrow().id());
         let sensor_dyn = unsafe {
             std::mem::transmute::<
-                Rc<RefCell<dyn SensorDynamic<Data = T>>>, 
-                Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>
+                Rc<RefCell<dyn Sensor<T>>>, 
+                Rc<RefCell<dyn Sensor<dyn SensorData>>>
             >(sensor)
         };
         self.sensors.insert(
@@ -41,29 +41,29 @@ impl MAGDS {
         self.neurons.insert(neuron.borrow().id(), neuron.clone());
     }
 
-    pub fn sensor<T: SensorDataDynamic>(
+    pub fn sensor<T: SensorData>(
         &self, name: &str
-    ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = T>>>> {
+    ) -> Option<Rc<RefCell<dyn Sensor<T>>>> {
         let sensor = self.sensors.get(&Rc::from(name))?.clone();
         Some(
-            <dyn SensorDynamic<Data = T> as SensorDynamicDowncast::<T>>
+            <dyn Sensor<T> as SensorDynamicDowncast::<T>>
                 ::sensor_dynamic_downcast(sensor)
         )
     }
 
     pub fn sensor_dynamic(
         &self, name: &str
-    ) -> Option<Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>> {
+    ) -> Option<Rc<RefCell<dyn Sensor<dyn SensorData>>>> {
         Some(self.sensors.get(&Rc::from(name))?.clone())
     }
 
     // experimental
-    pub unsafe fn sensor_base<D: SensorDataDynamic, T: SensorDynamic>(
+    pub unsafe fn sensor_base<S: Sensor<D>, D: SensorData>(
         &self, name: &str
-    ) -> Option<&mut T> {
+    ) -> Option<&mut S> {
         let sensor = self.sensors.get(&Rc::from(name))?.clone();
         let ptr = <
-            dyn SensorDynamic<Data = D> as SensorStaticDowncast::<T>
+            dyn Sensor<D> as SensorStaticDowncast::<S, D>
         >::sensor_static_downcast( sensor.clone() );
         Some(&mut *ptr)
     }
@@ -87,7 +87,7 @@ mod tests {
     
     use bionet_common::{
         data::DataCategory,
-        sensor::SensorDynamicBuilder,
+        sensor::SensorBuilder,
         neuron::NeuronID
     };
     
@@ -99,14 +99,14 @@ mod tests {
     fn create_magds() {
         let mut magds = MAGDS::new();
 
-        let sensor_1 = <ASAGraph::<i32, 25> as SensorDynamicBuilder::<i32>>::new(
+        let sensor_1 = <ASAGraph::<i32, 25> as SensorBuilder::<i32>>::new(
             "test", DataCategory::Numerical
         );
         for i in 1..=9 {
             sensor_1.borrow_mut().insert(&i);
         }
 
-        let sensor_2 = <ASAGraph::<String, 3> as SensorDynamicBuilder::<String>>::new(
+        let sensor_2 = <ASAGraph::<String, 3> as SensorBuilder::<String>>::new(
             "test_string", DataCategory::Numerical
         );
         for i in 1..=9 {
@@ -129,7 +129,7 @@ mod tests {
 
         unsafe {
             let sensor_1_base_from_magds: &mut ASAGraph<i32, 25> = 
-                magds.sensor_base::<i32, ASAGraph<i32, 25>>("test").unwrap();
+                magds.sensor_base::<ASAGraph<i32, 25>, i32>("test").unwrap();
             sensor_1_base_from_magds.insert(&13);
             sensor_1_base_from_magds.insert(&14);
             sensor_1_base_from_magds.insert(&15);
@@ -146,7 +146,7 @@ mod tests {
 
         unsafe {
             let sensor_2_base_from_magds: &mut ASAGraph<String, 3> =
-                magds.sensor_base::<String, ASAGraph<String, 3>>("test_string").unwrap();
+                magds.sensor_base::<ASAGraph<String, 3>, String>("test_string").unwrap();
             sensor_2_base_from_magds.insert(&13.to_string());
             sensor_2_base_from_magds.insert(&14.to_string());
             sensor_2_base_from_magds.insert(&15.to_string());

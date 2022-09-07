@@ -17,7 +17,7 @@ use bionet_common::{
         ConnectionID,
         defining_connection::DefiningConnection
     },
-    sensor::SensorDataDynamic
+    sensor::SensorData
 };
 
 use asa_graphs::neural::element::Element;
@@ -226,7 +226,7 @@ impl NeuronConnect for SimpleNeuron {
 }
 
 impl<Key, const ORDER: usize> NeuronConnectBilateral<Element<Key, ORDER>> for SimpleNeuron 
-where Key: SensorDataDynamic, [(); ORDER + 1]: {
+where Key: SensorData, [(); ORDER + 1]: {
     fn connect_bilateral_to(&mut self, _to: Rc<RefCell<Element<Key, ORDER>>>, _kind: ConnectionKind) 
     -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         let msg = "only defining connection from Element to SimpleNeuron can be created";

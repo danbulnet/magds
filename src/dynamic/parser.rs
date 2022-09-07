@@ -8,15 +8,15 @@ use polars::prelude::*;
 use asa_graphs::neural::graph::ASAGraph;
 
 use bionet_common::{
-    sensor::{ SensorDynamic, SensorDataDynamic, SensorDynamicDowncast },
+    sensor::{ Sensor, SensorData },
     data::{ DataVec, DataCategory },
 };
 
-use crate::graph::magds::MAGDS;
+use crate::dynamic::magds::MAGDS;
 
 pub(crate) fn asagraph_from_datavec(
     magds: &mut MAGDS, id: &str, data: &DataVec
-) -> Option<Rc<RefCell<dyn SensorDynamic<Data = dyn SensorDataDynamic>>>> {
+) -> Option<Rc<RefCell<dyn Sensor<dyn SensorData>>>> {
     match data {
         DataVec::Unknown => {
             log::error!("can't parse vec data type for sensor {id}");
@@ -74,9 +74,9 @@ pub(crate) fn asagraph_from_datavec(
     magds.sensor_dynamic(id)
 }
 
-fn asagraph_from_datavec_inner<T: SensorDataDynamic>(
+fn asagraph_from_datavec_inner<T: SensorData>(
     magds: &mut MAGDS, id: &str, data_category: DataCategory, data: &Vec<T>
-) -> Option<Rc<RefCell<dyn SensorDynamic<Data = T>>>> {
+) -> Option<Rc<RefCell<dyn Sensor<T>>>> {
     let graph = ASAGraph::<_, 25>::new_rc_from_vec(id, data_category, &data[..]);
     magds.add_sensor(graph);
     Some(magds.sensor(id).unwrap())
@@ -87,13 +87,12 @@ mod tests {
     use polars::datatypes::DataType;
 
     use bionet_common::{
-        polars as polars_common,
-        data::{DataVec, DataCategory}
+        polars as polars_common
     };
 
     use asa_graphs::neural::graph::ASAGraph;
 
-    use super::MAGDS;
+    use crate::dynamic::magds::MAGDS;
 
     #[test]
     fn csv_to_dataframe() {
@@ -111,7 +110,7 @@ mod tests {
         let _graph = super::asagraph_from_datavec(&mut magds, "variety", &variety_df_datavec);
         unsafe {
             let vv_from_magds: &mut ASAGraph<String, 25> =
-                magds.sensor_base::<String, ASAGraph<String, 25>>("variety").unwrap();
+                magds.sensor_base::<ASAGraph<String, 25>, String>("variety").unwrap();
             vv_from_magds.print_graph();
         }
         assert!(magds.sensor::<String>("variety").is_some());
