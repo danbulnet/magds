@@ -1,58 +1,101 @@
-// use std::{
-//     rc::Rc,
-//     cell::RefCell,
-//     collections::HashMap
-// };
+use std::{
+    rc::Rc,
+    cell::RefCell,
+    mem
+};
 
-// use bionet_common::{
-//     sensor::{ Sensor, SensorData },
-//     data::DataCategory,
-//     neuron::{ Neuron, NeuronID }
-// };
+use asa_graphs::neural::graph::ASAGraph;
 
-// use asa_graphs::neural::graph::ASAGraph;
+pub enum ASAGraphSensor {
+    Bool(ASAGraph<bool, 25>),
+    U8(ASAGraph<u8, 25>),
+    U16(ASAGraph<u16, 25>),
+    U32(ASAGraph<u32, 25>),
+    U64(ASAGraph<u64, 25>),
+    I8(ASAGraph<i8, 25>),
+    I16(ASAGraph<i16, 25>),
+    I32(ASAGraph<i32, 25>),
+    I64(ASAGraph<i64, 25>),
+    F32(ASAGraph<f32, 25>),
+    F64(ASAGraph<f64, 25>),
+    RcStr(ASAGraph<Rc<str>, 25>),
+    String(ASAGraph<String, 25>),
+}
 
-// pub enum SimpleSensor {
-//     Bool(ASAGraph<bool, 25>),
-//     U8(ASAGraph<u8, 25>),
-//     U16(ASAGraph<u16, 25>),
-//     U32(ASAGraph<u32, 25>),
-//     U64(ASAGraph<u64, 25>),
-//     I8(ASAGraph<i8, 25>),
-//     I16(ASAGraph<i16, 25>),
-//     I32(ASAGraph<i32, 25>),
-//     I64(ASAGraph<i64, 25>),
-//     F32(ASAGraph<f32, 25>),
-//     F64(ASAGraph<f64, 25>),
-//     String(ASAGraph<Rc<str>, 25>),
-// }
+impl From<ASAGraph<bool, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<bool, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::Bool(sensor)
+    }
+}
 
-// impl<D: SensorData> Sensor<D> for SimpleSensor {
-//     fn id(&self) -> &str { self.id() }
+impl From<ASAGraph<u8, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<u8, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::U8(sensor)
+    }
+}
 
-//     fn data_category(&self) -> DataCategory { self.data_category() }
+impl From<ASAGraph<u16, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<u16, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::U16(sensor)
+    }
+}
 
-//     fn insert(&mut self, key: &D) -> Rc<RefCell<dyn Neuron>> {
-//         self.insert(key)
-//     }
+impl From<ASAGraph<u32, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<u32, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::U32(sensor)
+    }
+}
 
-//     fn search(&self, key: &D) -> Option<Rc<RefCell<dyn Neuron>>> { 
-//         Some(
-//             self.search(key).unwrap() as Rc<RefCell<dyn Neuron>>
-//         )
-//     }
+impl From<ASAGraph<u64, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<u64, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::U64(sensor)
+    }
+}
 
-//     fn activate(
-//         &mut self, item: &D, signal: f32, propagate_horizontal: bool, propagate_vertical: bool
-//     ) -> Result<HashMap<NeuronID, Rc<RefCell<dyn Neuron>>>, String> {
-//         self.activate(item, signal, propagate_horizontal, propagate_vertical)
-//     }
+impl From<ASAGraph<i8, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<i8, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::I8(sensor)
+    }
+}
 
-//     fn deactivate(
-//         &mut self, item: &D, propagate_horizontal: bool, propagate_vertical: bool
-//     ) -> Result<(), String> {
-//         self.deactivate(item, propagate_horizontal, propagate_vertical)
-//     }
+impl From<ASAGraph<i16, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<i16, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::I16(sensor)
+    }
+}
 
-//     fn deactivate_sensor(&mut self) { self.deactivate_sensor() }
-// }
+impl From<ASAGraph<i32, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<i32, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::I32(sensor)
+    }
+}
+
+impl From<ASAGraph<i64, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<i64, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::I64(sensor)
+    }
+}
+
+impl From<ASAGraph<f32, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<f32, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::F32(sensor)
+    }
+}
+
+impl From<ASAGraph<f64, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<f64, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::F64(sensor)
+    }
+}
+
+impl From<ASAGraph<Rc<str>, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<Rc<str>, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::RcStr(sensor)
+    }
+}
+
+impl From<ASAGraph<String, 25>> for ASAGraphSensor {
+    fn from(sensor: ASAGraph<String, 25>) -> ASAGraphSensor {
+        ASAGraphSensor::String(sensor)
+    }
+}

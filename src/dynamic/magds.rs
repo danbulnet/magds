@@ -6,11 +6,12 @@ use std::{
 
 use bionet_common::{
     neuron::{ Neuron, NeuronID },
-    sensor::{ Sensor, SensorData, SensorDynamicDowncast, SensorStaticDowncast }
+    sensor::{ Sensor, SensorData, SensorDynamicDowncast, SensorStaticDowncast },
+    data::DataType
 };
 
 pub struct MAGDS {
-    pub(crate) sensors: HashMap<Rc<str>, Rc<RefCell<dyn Sensor<dyn SensorData>>>>,
+    pub(crate) sensors: HashMap<Rc<str>, (Rc<RefCell<dyn Sensor<dyn SensorData>>>, DataType)>,
     pub(crate) neurons: HashMap<NeuronID, Rc<RefCell<dyn Neuron>>>,
 }
 
@@ -25,6 +26,7 @@ impl MAGDS {
 
     pub fn add_sensor<T: SensorData>(&mut self, sensor: Rc<RefCell<dyn Sensor<T>>>) {
         let sensor_id = Rc::from(sensor.borrow().id());
+        let sensor_datatype = sensor.borrow().data_type();
         let sensor_dyn = unsafe {
             std::mem::transmute::<
                 Rc<RefCell<dyn Sensor<T>>>, 
@@ -33,7 +35,7 @@ impl MAGDS {
         };
         self.sensors.insert(
             sensor_id,
-            sensor_dyn
+            (sensor_dyn, sensor_datatype)
         );
     }
 
@@ -44,24 +46,23 @@ impl MAGDS {
     pub fn sensor<T: SensorData>(
         &self, name: &str
     ) -> Option<Rc<RefCell<dyn Sensor<T>>>> {
-        let sensor = self.sensors.get(&Rc::from(name))?.clone();
+        let sensor = self.sensors.get(&Rc::from(name))?.0.clone();
         Some(
-            <dyn Sensor<T> as SensorDynamicDowncast::<T>>
-                ::sensor_dynamic_downcast(sensor)
+            <dyn Sensor<T> as SensorDynamicDowncast::<T>>::sensor_dynamic_downcast(sensor)
         )
     }
 
     pub fn sensor_dynamic(
         &self, name: &str
     ) -> Option<Rc<RefCell<dyn Sensor<dyn SensorData>>>> {
-        Some(self.sensors.get(&Rc::from(name))?.clone())
+        Some(self.sensors.get(&Rc::from(name))?.0.clone())
     }
 
     // experimental
     pub unsafe fn sensor_base<S: Sensor<D>, D: SensorData>(
         &self, name: &str
     ) -> Option<&mut S> {
-        let sensor = self.sensors.get(&Rc::from(name))?.clone();
+        let sensor = self.sensors.get(&Rc::from(name))?.0.clone();
         let ptr = <
             dyn Sensor<D> as SensorStaticDowncast::<S, D>
         >::sensor_static_downcast( sensor.clone() );
@@ -80,15 +81,15 @@ impl MAGDS {
 #[cfg(test)]
 mod tests {
     use std::{
-        rc::Rc
+        rc::Rc,
+        cell::RefCell
     };
 
     use asa_graphs::neural::graph::ASAGraph;
     
     use bionet_common::{
-        data::DataCategory,
-        sensor::SensorBuilder,
-        neuron::NeuronID
+        neuron::NeuronID,
+        sensor::Sensor
     };
     
     use crate::neuron::simple_neuron::SimpleNeuron;
@@ -99,19 +100,11 @@ mod tests {
     fn create_magds() {
         let mut magds = MAGDS::new();
 
-        let sensor_1 = <ASAGraph::<i32, 25> as SensorBuilder::<i32>>::new(
-            "test", DataCategory::Numerical
-        );
-        for i in 1..=9 {
-            sensor_1.borrow_mut().insert(&i);
-        }
+        let sensor_1 = ASAGraph::<i32, 25>::new_rc("test") as Rc<RefCell<dyn Sensor<i32>>>;
+        for i in 1..=9 { sensor_1.borrow_mut().insert(&i); }
 
-        let sensor_2 = <ASAGraph::<String, 3> as SensorBuilder::<String>>::new(
-            "test_string", DataCategory::Numerical
-        );
-        for i in 1..=9 {
-            sensor_2.borrow_mut().insert(&i.to_string());
-        }
+        let sensor_2 = ASAGraph::<String, 3>::new_rc("test_string") as Rc<RefCell<dyn Sensor<String>>>;
+        for i in 1..=9 { sensor_2.borrow_mut().insert(&i.to_string()); }
 
         let parent_name = Rc::from("test");
         let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);

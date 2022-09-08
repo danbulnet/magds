@@ -1,6 +1,7 @@
 use std::{
     rc::Rc,
-    cell::RefCell
+    cell::RefCell,
+    marker::PhantomData
 };
 
 use polars::prelude::*;
@@ -9,7 +10,7 @@ use asa_graphs::neural::graph::ASAGraph;
 
 use bionet_common::{
     sensor::{ Sensor, SensorData },
-    data::{ DataVec, DataCategory },
+    data::{ DataVec, DataCategory, DataDeductor },
 };
 
 use crate::dynamic::magds::MAGDS;
@@ -76,8 +77,8 @@ pub(crate) fn asagraph_from_datavec(
 
 fn asagraph_from_datavec_inner<T: SensorData>(
     magds: &mut MAGDS, id: &str, data_category: DataCategory, data: &Vec<T>
-) -> Option<Rc<RefCell<dyn Sensor<T>>>> {
-    let graph = ASAGraph::<_, 25>::new_rc_from_vec(id, data_category, &data[..]);
+) -> Option<Rc<RefCell<dyn Sensor<T>>>> where PhantomData<T>: DataDeductor {
+    let graph = ASAGraph::<_, 25>::new_rc_from_vec(id, &data[..]);
     magds.add_sensor(graph);
     Some(magds.sensor(id).unwrap())
 }
