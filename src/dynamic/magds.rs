@@ -8,8 +8,8 @@ use asa_graphs::neural::graph::ASAGraph;
 use bionet_common::{
     neuron::{ Neuron, NeuronID },
     data::{ DataType, DataTypeValue, DataCategory },
-    sensor::{ Sensor, SensorData }
-};
+    sensor::Sensor
+    };
 
 use crate::neuron::simple_neuron::SimpleNeuron;
 
@@ -53,11 +53,11 @@ impl MAGDS {
         self.sensors.insert(id, Rc::new(RefCell::new(sensor)));
     }
 
-    pub fn add_sensor<D: SensorData>(
-        &mut self, sensor: Box<dyn Sensor<D>>
+    pub fn add_sensor(
+        &mut self, sensor: Rc<RefCell<SensorConatiner>>
     ) -> Option<Rc<RefCell<SensorConatiner>>> {
-        let sensor_id = sensor.id().clone();
-        self.sensors.insert(sensor_id, Rc::new(RefCell::new(sensor.into())))
+        let sensor_id = sensor.borrow().id().clone();
+        self.sensors.insert(sensor_id, sensor)
     }
 
     pub fn sensor(&self, id: Rc<str>) -> Option<&Rc<RefCell<SensorConatiner>>> {
@@ -141,7 +141,10 @@ impl MAGDS {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
+    use std::{
+        rc::Rc,
+        cell::RefCell
+    };
 
     use asa_graphs::neural::graph::ASAGraph;
     
@@ -159,18 +162,18 @@ mod tests {
     fn create_magds() {
         let mut magds = MAGDS::new();
 
-        let mut sensor_1 = ASAGraph::<i32>::new_box("test");
+        let mut sensor_1 = ASAGraph::<i32>::new_box("test") as Box<dyn Sensor<i32>>;
         for i in 1..=9 { sensor_1.insert(&i); }
 
-        let mut sensor_2 = ASAGraph::<String, 3>::new_box("test_string");
+        let mut sensor_2 = ASAGraph::<String, 3>::new_box("test_string") as Box<dyn Sensor<String>>;
         for i in 1..=9 { sensor_2.insert(&i.to_string()); }
 
         let parent_name = Rc::from("test");
         let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
         let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
 
-        magds.add_sensor(sensor_1);
-        magds.add_sensor(sensor_2);
+        magds.add_sensor(Rc::new(RefCell::new(sensor_1.into())));
+        magds.add_sensor(Rc::new(RefCell::new(sensor_2.into())));
         magds.add_neuron(neuron_1);
         magds.add_neuron(neuron_2);
 

@@ -427,3 +427,105 @@ impl Sensor<DataTypeValue> for SensorConatiner {
         }
     }
 }
+
+impl From<ASAGraph<bool>> for SensorConatiner {
+    fn from(sensor: ASAGraph<bool>) -> SensorConatiner {
+        SensorConatiner::Bool(sensor)
+    }
+}
+
+impl From<ASAGraph<i8>> for SensorConatiner {
+    fn from(sensor: ASAGraph<i8>) -> SensorConatiner {
+        SensorConatiner::I8(sensor)
+    }
+}
+
+impl From<ASAGraph<i16>> for SensorConatiner {
+    fn from(sensor: ASAGraph<i16>) -> SensorConatiner {
+        SensorConatiner::I16(sensor)
+    }
+}
+
+impl From<ASAGraph<i32>> for SensorConatiner {
+    fn from(sensor: ASAGraph<i32>) -> SensorConatiner {
+        SensorConatiner::I32(sensor)
+    }
+}
+
+impl From<ASAGraph<i64>> for SensorConatiner {
+    fn from(sensor: ASAGraph<i64>) -> SensorConatiner {
+        SensorConatiner::I64(sensor)
+    }
+}
+
+impl From<ASAGraph<i128>> for SensorConatiner {
+    fn from(sensor: ASAGraph<i128>) -> SensorConatiner {
+        SensorConatiner::I128(sensor)
+    }
+}
+
+impl From<ASAGraph<isize>> for SensorConatiner {
+    fn from(sensor: ASAGraph<isize>) -> SensorConatiner {
+        SensorConatiner::ISize(sensor)
+    }
+}
+
+impl From<ASAGraph<u8>> for SensorConatiner {
+    fn from(sensor: ASAGraph<u8>) -> SensorConatiner {
+        SensorConatiner::U8(sensor)
+    }
+}
+
+impl From<ASAGraph<u16>> for SensorConatiner {
+    fn from(sensor: ASAGraph<u16>) -> SensorConatiner {
+        SensorConatiner::U16(sensor)
+    }
+}
+
+impl From<ASAGraph<u32>> for SensorConatiner {
+    fn from(sensor: ASAGraph<u32>) -> SensorConatiner {
+        SensorConatiner::U32(sensor)
+    }
+}
+
+impl From<ASAGraph<u64>> for SensorConatiner {
+    fn from(sensor: ASAGraph<u64>) -> SensorConatiner {
+        SensorConatiner::U64(sensor)
+    }
+}
+
+impl From<ASAGraph<u128>> for SensorConatiner {
+    fn from(sensor: ASAGraph<u128>) -> SensorConatiner {
+        SensorConatiner::U128(sensor)
+    }
+}
+
+impl From<ASAGraph<usize>> for SensorConatiner {
+    fn from(sensor: ASAGraph<usize>) -> SensorConatiner {
+        SensorConatiner::USize(sensor)
+    }
+}
+
+impl From<ASAGraph<f32>> for SensorConatiner {
+    fn from(sensor: ASAGraph<f32>) -> SensorConatiner {
+        SensorConatiner::F32(sensor)
+    }
+}
+
+impl From<ASAGraph<f64>> for SensorConatiner {
+    fn from(sensor: ASAGraph<f64>) -> SensorConatiner {
+        SensorConatiner::F64(sensor)
+    }
+}
+
+impl From<ASAGraph<Rc<str>>> for SensorConatiner {
+    fn from(sensor: ASAGraph<Rc<str>>) -> SensorConatiner {
+        SensorConatiner::RcStr(sensor)
+    }
+}
+
+impl From<ASAGraph<String>> for SensorConatiner {
+    fn from(sensor: ASAGraph<String>) -> SensorConatiner {
+        SensorConatiner::String(sensor)
+    }
+}

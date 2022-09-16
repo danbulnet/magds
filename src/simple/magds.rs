@@ -157,7 +157,6 @@ mod tests {
     use crate::neuron::simple_neuron::SimpleNeuron;
 
     use super::MAGDS;
-    use super::super::sensor::SensorConatiner;
 
     #[test]
     fn create_magds() {
@@ -173,8 +172,8 @@ mod tests {
         let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
         let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
 
-        magds.add_sensor(Rc::new(RefCell::new(SensorConatiner::I32(sensor_1))));
-        magds.add_sensor(Rc::new(RefCell::new(SensorConatiner::String(sensor_2))));
+        magds.add_sensor(Rc::new(RefCell::new(sensor_1.into())));
+        magds.add_sensor(Rc::new(RefCell::new(sensor_2.into())));
         magds.add_neuron(neuron_1);
         magds.add_neuron(neuron_2);
 

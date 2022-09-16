@@ -1,15 +1,14 @@
 use std::{
     rc::Rc,
     cell::RefCell,
-    collections::HashMap,
-    mem
+    collections::HashMap
 };
 
 use enum_as_inner::EnumAsInner;
 
 use bionet_common::{
     neuron::{ Neuron, NeuronID },
-    sensor::{Sensor, SensorData },
+    sensor::Sensor,
     data::{ DataType, DataTypeValue, DataCategory }
 };
 
@@ -427,30 +426,104 @@ impl Sensor<DataTypeValue> for SensorConatiner {
     }
 }
 
-impl<D: SensorData> From<Box<dyn Sensor<D>>> for SensorConatiner {
-    fn from(sensor: Box<dyn Sensor<D>>) -> SensorConatiner {
-        let sensor_data_type = sensor.data_type();
-        unsafe {
-            match sensor_data_type {
-                DataType::Bool => SensorConatiner::Bool(mem::transmute(sensor)),
-                DataType::U8 => SensorConatiner::U8(mem::transmute(sensor)),
-                DataType::U16 => SensorConatiner::U16(mem::transmute(sensor)),
-                DataType::U32 => SensorConatiner::U32(mem::transmute(sensor)),
-                DataType::U64 => SensorConatiner::U64(mem::transmute(sensor)),
-                DataType::U128 => SensorConatiner::U128(mem::transmute(sensor)),
-                DataType::USize => SensorConatiner::USize(mem::transmute(sensor)),
-                DataType::I8 => SensorConatiner::I8(mem::transmute(sensor)),
-                DataType::I16 => SensorConatiner::I16(mem::transmute(sensor)),
-                DataType::I32 => SensorConatiner::I32(mem::transmute(sensor)),
-                DataType::I64 => SensorConatiner::I64(mem::transmute(sensor)),
-                DataType::I128 => SensorConatiner::I128(mem::transmute(sensor)),
-                DataType::ISize => SensorConatiner::ISize(mem::transmute(sensor)),
-                DataType::F32 => SensorConatiner::F32(mem::transmute(sensor)),
-                DataType::F64 => SensorConatiner::F64(mem::transmute(sensor)),
-                DataType::RcStr => SensorConatiner::RcStr(mem::transmute(sensor)),
-                DataType::String => SensorConatiner::String(mem::transmute(sensor)),
-                DataType::Unknown => panic!("unknown sensor data type is not allowed"),
-            }
-        }
+impl From<Box<dyn Sensor<bool>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<bool>>) -> SensorConatiner {
+        SensorConatiner::Bool(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<i8>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<i8>>) -> SensorConatiner {
+        SensorConatiner::I8(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<i16>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<i16>>) -> SensorConatiner {
+        SensorConatiner::I16(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<i32>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<i32>>) -> SensorConatiner {
+        SensorConatiner::I32(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<i64>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<i64>>) -> SensorConatiner {
+        SensorConatiner::I64(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<i128>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<i128>>) -> SensorConatiner {
+        SensorConatiner::I128(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<isize>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<isize>>) -> SensorConatiner {
+        SensorConatiner::ISize(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<u8>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<u8>>) -> SensorConatiner {
+        SensorConatiner::U8(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<u16>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<u16>>) -> SensorConatiner {
+        SensorConatiner::U16(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<u32>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<u32>>) -> SensorConatiner {
+        SensorConatiner::U32(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<u64>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<u64>>) -> SensorConatiner {
+        SensorConatiner::U64(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<u128>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<u128>>) -> SensorConatiner {
+        SensorConatiner::U128(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<usize>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<usize>>) -> SensorConatiner {
+        SensorConatiner::USize(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<f32>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<f32>>) -> SensorConatiner {
+        SensorConatiner::F32(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<f64>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<f64>>) -> SensorConatiner {
+        SensorConatiner::F64(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<Rc<str>>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<Rc<str>>>) -> SensorConatiner {
+        SensorConatiner::RcStr(sensor)
+    }
+}
+
+impl From<Box<dyn Sensor<String>>> for SensorConatiner {
+    fn from(sensor: Box<dyn Sensor<String>>) -> SensorConatiner {
+        SensorConatiner::String(sensor)
     }
 }
