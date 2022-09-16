@@ -3,7 +3,6 @@
 
 pub mod neuron;
 pub mod dynamic;
-pub mod experiment;
 
 #[cfg(test)]
 mod tests {
