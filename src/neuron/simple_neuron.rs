@@ -72,6 +72,7 @@ impl SimpleNeuron {
         sensors
     }
 
+    #[allow(dead_code)]
     pub(crate) fn defining_neurons(&self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
         let mut neurons = HashMap::new();
         for (_id, definition) in &self.definitions_to_self {

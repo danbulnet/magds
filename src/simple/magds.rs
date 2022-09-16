@@ -8,7 +8,7 @@ use asa_graphs::neural::graph::ASAGraph;
 use bionet_common::{
     neuron::{ Neuron, NeuronID },
     data::{ DataType, DataTypeValue, DataCategory },
-    sensor::{ Sensor, SensorData }
+    sensor::Sensor
 };
 
 use crate::neuron::simple_neuron::SimpleNeuron;
@@ -17,7 +17,7 @@ use super::sensor::SensorConatiner;
 
 pub struct MAGDS {
     pub(crate) sensors: HashMap<Rc<str>, Rc<RefCell<SensorConatiner>>>,
-    pub(crate) neurons: HashMap<NeuronID, Rc<RefCell<dyn Neuron>>>
+    pub(crate) neurons: HashMap<NeuronID, Rc<RefCell<SimpleNeuron>>>
 }
 
 impl MAGDS {
@@ -31,33 +31,33 @@ impl MAGDS {
 
     pub fn create_sensor(&mut self, id: Rc<str>, data_type: DataType) {
         let sensor = match data_type {
-            DataType::Bool => SensorConatiner::Bool(ASAGraph::<bool>::new_box(&id)),
-            DataType::U8 => SensorConatiner::U8(ASAGraph::<u8>::new_box(&id)),
-            DataType::U16 => SensorConatiner::U16(ASAGraph::<u16>::new_box(&id)),
-            DataType::U32 => SensorConatiner::U32(ASAGraph::<u32>::new_box(&id)),
-            DataType::U64 => SensorConatiner::U64(ASAGraph::<u64>::new_box(&id)),
-            DataType::U128 => SensorConatiner::U128(ASAGraph::<u128>::new_box(&id)),
-            DataType::USize => SensorConatiner::USize(ASAGraph::<usize>::new_box(&id)),
-            DataType::I8 => SensorConatiner::I8(ASAGraph::<i8>::new_box(&id)),
-            DataType::I16 => SensorConatiner::I16(ASAGraph::<i16>::new_box(&id)),
-            DataType::I32 => SensorConatiner::I32(ASAGraph::<i32>::new_box(&id)),
-            DataType::I64 => SensorConatiner::I64(ASAGraph::<i64>::new_box(&id)),
-            DataType::I128 => SensorConatiner::I128(ASAGraph::<i128>::new_box(&id)),
-            DataType::ISize => SensorConatiner::ISize(ASAGraph::<isize>::new_box(&id)),
-            DataType::F32 => SensorConatiner::F32(ASAGraph::<f32>::new_box(&id)),
-            DataType::F64 => SensorConatiner::F64(ASAGraph::<f64>::new_box(&id)),
-            DataType::RcStr => SensorConatiner::RcStr(ASAGraph::<Rc<str>>::new_box(&id)),
-            DataType::String => SensorConatiner::String(ASAGraph::<String>::new_box(&id)),
+            DataType::Bool => SensorConatiner::Bool(ASAGraph::<bool>::new(&id)),
+            DataType::U8 => SensorConatiner::U8(ASAGraph::<u8>::new(&id)),
+            DataType::U16 => SensorConatiner::U16(ASAGraph::<u16>::new(&id)),
+            DataType::U32 => SensorConatiner::U32(ASAGraph::<u32>::new(&id)),
+            DataType::U64 => SensorConatiner::U64(ASAGraph::<u64>::new(&id)),
+            DataType::U128 => SensorConatiner::U128(ASAGraph::<u128>::new(&id)),
+            DataType::USize => SensorConatiner::USize(ASAGraph::<usize>::new(&id)),
+            DataType::I8 => SensorConatiner::I8(ASAGraph::<i8>::new(&id)),
+            DataType::I16 => SensorConatiner::I16(ASAGraph::<i16>::new(&id)),
+            DataType::I32 => SensorConatiner::I32(ASAGraph::<i32>::new(&id)),
+            DataType::I64 => SensorConatiner::I64(ASAGraph::<i64>::new(&id)),
+            DataType::I128 => SensorConatiner::I128(ASAGraph::<i128>::new(&id)),
+            DataType::ISize => SensorConatiner::ISize(ASAGraph::<isize>::new(&id)),
+            DataType::F32 => SensorConatiner::F32(ASAGraph::<f32>::new(&id)),
+            DataType::F64 => SensorConatiner::F64(ASAGraph::<f64>::new(&id)),
+            DataType::RcStr => SensorConatiner::RcStr(ASAGraph::<Rc<str>>::new(&id)),
+            DataType::String => SensorConatiner::String(ASAGraph::<String>::new(&id)),
             DataType::Unknown => panic!("unknown data type sensor is not allowed")
         };
         self.sensors.insert(id, Rc::new(RefCell::new(sensor)));
     }
 
-    pub fn add_sensor<D: SensorData>(
-        &mut self, sensor: Box<dyn Sensor<D>>
+    pub fn add_sensor(
+        &mut self, sensor: Rc<RefCell<SensorConatiner>>
     ) -> Option<Rc<RefCell<SensorConatiner>>> {
-        let sensor_id = sensor.id().clone();
-        self.sensors.insert(sensor_id, Rc::new(RefCell::new(sensor.into())))
+        let sensor_id = sensor.borrow().id().clone();
+        self.sensors.insert(sensor_id, sensor)
     }
 
     pub fn sensor(&self, id: Rc<str>) -> Option<&Rc<RefCell<SensorConatiner>>> {
@@ -130,23 +130,26 @@ impl MAGDS {
         self.neurons.insert(neuron.borrow().id(), neuron.clone());
     }
 
-    pub fn neuron_from_id(&self, id: &NeuronID) -> Option<Rc<RefCell<dyn Neuron>>> {
+    pub fn neuron_from_id(&self, id: &NeuronID) -> Option<Rc<RefCell<SimpleNeuron>>> {
         Some(self.neurons.get(id)?.clone())
     }
 
-    pub fn neuron(&self, id: &str, parent_id: &str) -> Option<Rc<RefCell<dyn Neuron>>> {
+    pub fn neuron(&self, id: &str, parent_id: &str) -> Option<Rc<RefCell<SimpleNeuron>>> {
         Some(self.neurons.get(&NeuronID::new(id, parent_id))?.clone())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
+    use std::{
+        rc::Rc,
+        cell::RefCell
+    };
 
     use asa_graphs::neural::graph::ASAGraph;
     
     use bionet_common::{
-        neuron::NeuronID,
+        neuron::{ NeuronID, Neuron },
         sensor::Sensor,
         data::DataType
     };
@@ -154,23 +157,24 @@ mod tests {
     use crate::neuron::simple_neuron::SimpleNeuron;
 
     use super::MAGDS;
+    use super::super::sensor::SensorConatiner;
 
     #[test]
     fn create_magds() {
         let mut magds = MAGDS::new();
 
-        let mut sensor_1 = ASAGraph::<i32>::new_box("test");
+        let mut sensor_1 = ASAGraph::<i32>::new("test");
         for i in 1..=9 { sensor_1.insert(&i); }
 
-        let mut sensor_2 = ASAGraph::<String, 3>::new_box("test_string");
+        let mut sensor_2 = ASAGraph::<String>::new("test_string");
         for i in 1..=9 { sensor_2.insert(&i.to_string()); }
 
         let parent_name = Rc::from("test");
         let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
         let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
 
-        magds.add_sensor(sensor_1);
-        magds.add_sensor(sensor_2);
+        magds.add_sensor(Rc::new(RefCell::new(SensorConatiner::I32(sensor_1))));
+        magds.add_sensor(Rc::new(RefCell::new(SensorConatiner::String(sensor_2))));
         magds.add_neuron(neuron_1);
         magds.add_neuron(neuron_2);
 
