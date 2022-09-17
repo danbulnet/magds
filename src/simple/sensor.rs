@@ -1,4 +1,5 @@
 use std::{
+    fmt::{ Display, Formatter, Result as FmtResult },
     rc::Rc,
     cell::RefCell,
     collections::HashMap
@@ -33,6 +34,30 @@ pub enum SensorConatiner {
     F64(ASAGraph<f64>),
     RcStr(ASAGraph<Rc<str>>),
     String(ASAGraph<String>)
+}
+
+impl Display for SensorConatiner {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            SensorConatiner::Bool(v) => write!(f, "{v}"),
+            SensorConatiner::U8(v) => write!(f, "{v}"),
+            SensorConatiner::U16(v) => write!(f, "{v}"),
+            SensorConatiner::U32(v) => write!(f, "{v}"),
+            SensorConatiner::U64(v) => write!(f, "{v}"),
+            SensorConatiner::U128(v) => write!(f, "{v}"),
+            SensorConatiner::USize(v) => write!(f, "{v}"),
+            SensorConatiner::I8(v) => write!(f, "{v}"),
+            SensorConatiner::I16(v) => write!(f, "{v}"),
+            SensorConatiner::I32(v) => write!(f, "{v}"),
+            SensorConatiner::I64(v) => write!(f, "{v}"),
+            SensorConatiner::I128(v) => write!(f, "{v}"),
+            SensorConatiner::ISize(v) => write!(f, "{v}"),
+            SensorConatiner::F32(v) => write!(f, "{v}"),
+            SensorConatiner::F64(v) => write!(f, "{v}"),
+            SensorConatiner::RcStr(v) => write!(f, "{v}"),
+            SensorConatiner::String(v) => write!(f, "{v}"),
+        }
+    }
 }
 
 impl Sensor<DataTypeValue> for SensorConatiner {

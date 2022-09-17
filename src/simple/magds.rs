@@ -29,7 +29,9 @@ impl MAGDS {
         Rc::new(RefCell::new(MAGDS { sensors: HashMap::new(), neurons: HashMap::new() }))
     }
 
-    pub fn create_sensor(&mut self, id: Rc<str>, data_type: DataType) {
+    pub fn create_sensor(
+        &mut self, id: Rc<str>, data_type: DataType
+    ) -> Option<Rc<RefCell<SensorConatiner>>> {
         let sensor = match data_type {
             DataType::Bool => SensorConatiner::Bool(ASAGraph::<bool>::new(&id)),
             DataType::U8 => SensorConatiner::U8(ASAGraph::<u8>::new(&id)),
@@ -50,14 +52,19 @@ impl MAGDS {
             DataType::String => SensorConatiner::String(ASAGraph::<String>::new(&id)),
             DataType::Unknown => panic!("unknown data type sensor is not allowed")
         };
-        self.sensors.insert(id, Rc::new(RefCell::new(sensor)));
+        if self.sensors.contains_key(&id) { return None }
+        let sensor_ptr = Rc::new(RefCell::new(sensor));
+        self.sensors.insert(id, sensor_ptr.clone());
+        Some(sensor_ptr)
     }
 
     pub fn add_sensor(
         &mut self, sensor: Rc<RefCell<SensorConatiner>>
     ) -> Option<Rc<RefCell<SensorConatiner>>> {
         let sensor_id = sensor.borrow().id().clone();
-        self.sensors.insert(sensor_id, sensor)
+        if self.sensors.contains_key(&sensor_id) { return None }
+        self.sensors.insert(sensor_id, sensor.clone());
+        Some(sensor)
     }
 
     pub fn sensor(&self, id: Rc<str>) -> Option<&Rc<RefCell<SensorConatiner>>> {
