@@ -133,8 +133,29 @@ impl MAGDS {
         Ok(())
     }
     
-    pub fn add_neuron(&mut self, neuron: Rc<RefCell<SimpleNeuron>>) {
-        self.neurons.insert(neuron.borrow().id(), neuron.clone());
+    pub fn create_neuron(
+        &mut self, id: NeuronID
+    ) -> Option<Rc<RefCell<dyn Neuron>>> {
+        let neuron = SimpleNeuron::new(id) as Rc<RefCell<dyn Neuron>>;
+        let neuron_id = neuron.borrow().id().clone();
+        if let Err(e) = self.neurons.try_insert(neuron_id.clone(), neuron.clone()) {
+            log::error!("neuron id: {:?} already exsists in magds, skipping", neuron_id);
+            None
+        } else {
+            Some(neuron)
+        }
+    }
+    
+    pub fn add_neuron(
+        &mut self, neuron: Rc<RefCell<dyn Neuron>>
+    ) -> Option<Rc<RefCell<dyn Neuron>>> {
+        let neuron_id = neuron.borrow().id().clone();
+        if let Err(_) = self.neurons.try_insert(neuron_id.clone(), neuron.clone()) {
+            log::error!("neuron id: {:?} already exsists in magds, skipping", neuron_id);
+            None
+        } else {
+            Some(neuron)
+        }
     }
 
     pub fn neuron_from_id(&self, id: &NeuronID) -> Option<Rc<RefCell<dyn Neuron>>> {
@@ -175,9 +196,13 @@ mod tests {
         let mut sensor_2 = ASAGraph::<String, 3>::new_box("test_string") as Box<dyn Sensor<String>>;
         for i in 1..=9 { sensor_2.insert(&i.to_string()); }
 
-        let parent_name = Rc::from("test");
-        let neuron_1 = SimpleNeuron::new(&Rc::from("neuron_1"), &parent_name);
-        let neuron_2 = SimpleNeuron::new(&Rc::from("neuron_2"), &parent_name);
+        let parent_name: Rc<str> = Rc::from("test");
+        let neuron_1 = SimpleNeuron::new(
+            NeuronID { id: "neuron_1".into(), parent_id: parent_name.clone() }
+        );
+        let neuron_2 = SimpleNeuron::new(
+            NeuronID { id: "neuron_2".into(), parent_id: parent_name.clone() }
+        );
 
         magds.add_sensor(Rc::new(RefCell::new(sensor_1.into())));
         magds.add_sensor(Rc::new(RefCell::new(sensor_2.into())));
