@@ -183,6 +183,54 @@ mod tests {
     fn df_to_magds() {
         let df = polars_common::csv_to_dataframe("data/iris.csv").unwrap();
         let magds = super::magds_from_df("iris".into(), &df);
+        println!("{magds}");
+
+        let versicolor = 
+            magds.sensor_search("variety".into(), &"Versicolor".to_string().into()).unwrap();
+        let setosa = 
+            magds.sensor_search("variety".into(), &"Setosa".to_string().into()).unwrap();
+        let virginica = 
+            magds.sensor_search("variety".into(), &"Virginica".to_string().into()).unwrap();
+        assert_eq!(setosa.borrow().counter(), 49);
+        assert_eq!(versicolor.borrow().counter(), 50);
+        assert_eq!(virginica.borrow().counter(), 50);
+
+        let sl58 = magds.sensor_search("sepal.length".into(), &5.8_f64.into()).unwrap();
+        assert_eq!(sl58.borrow().counter(), 7);
+
+        let neuron_1 = magds.neuron("1".into(), "iris".into()).unwrap();
+        println!("neuron_1 {}", neuron_1.borrow());
+        for (id, sensor) in &neuron_1.borrow().explain() {
+            println!("{id}");
+            if id.parent_id == "petal.length".into() {
+                assert_eq!(sensor.borrow().id().id, "1.4".into());
+            } else if id.parent_id == "petal.width".into() {
+                assert_eq!(sensor.borrow().id().id, "0.2".into());
+            } else if id.parent_id == "sepal.width".into() {
+                assert_eq!(sensor.borrow().id().id, "3.5".into());
+            } else if id.parent_id == "variety".into() {
+                assert_eq!(sensor.borrow().id().id, "Setosa".into());
+            } else if id.parent_id == "sepal.length".into() {
+                panic!()
+            } 
+        }
+
+        let neuron_2 = magds.neuron("2".into(), "iris".into()).unwrap();
+        println!("neuron_2 {}", neuron_2.borrow());
+        for (id, sensor) in &neuron_2.borrow().explain() {
+            println!("{id}");
+            if id.parent_id == "petal.length".into() {
+                assert_eq!(sensor.borrow().id().id, "1.4".into());
+            } else if id.parent_id == "petal.width".into() {
+                assert_eq!(sensor.borrow().id().id, "0.2".into());
+            } else if id.parent_id == "sepal.width".into() {
+                assert_eq!(sensor.borrow().id().id, "3".into());
+            } else if id.parent_id == "variety".into() {
+                assert_eq!(sensor.borrow().id().id, "Setosa".into());
+            } else if id.parent_id == "sepal.length".into() {
+                assert_eq!(sensor.borrow().id().id, "4.9".into());
+            } 
+        }
     }
 
     #[test]

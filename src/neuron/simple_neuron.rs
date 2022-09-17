@@ -84,18 +84,20 @@ impl SimpleNeuron {
         }
         neurons
     }
-}
 
-impl Neuron for SimpleNeuron {
-    fn id(&self) -> NeuronID { self.id.clone() }
+    pub fn id(&self) -> NeuronID { self.id.clone() }
 
-    fn activation(&self) -> f32 { self.activation }
+    pub fn activation(&self) -> f32 { self.activation }
 
-    fn is_sensor(&self) -> bool { false }
+    pub fn is_sensor(&self) -> bool { false }
 
-    fn counter(&self) -> usize { 1usize }
+    pub fn counter(&self) -> usize { 1usize }
 
-    fn activate(
+    pub fn explain(&self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
+        self.defining_sensors()
+    }
+
+    pub fn activate(
         &mut self, signal: f32, propagate_horizontal: bool, propagate_vertical: bool
     ) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
         self.activation += signal;
@@ -116,11 +118,7 @@ impl Neuron for SimpleNeuron {
         neurons
     }
 
-    fn explain(&mut self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
-        self.defining_sensors()
-    }
-
-    fn deactivate(&mut self, propagate_horizontal: bool, propagate_vertical: bool) {
+    pub fn deactivate(&mut self, propagate_horizontal: bool, propagate_vertical: bool) {
         self.activation = 0.0f32;
 
         if propagate_vertical {
@@ -128,6 +126,30 @@ impl Neuron for SimpleNeuron {
                 neuron.borrow_mut().deactivate(propagate_horizontal, propagate_vertical);
             }
         }
+    }
+}
+
+impl Neuron for SimpleNeuron {
+    fn id(&self) -> NeuronID { self.id() }
+
+    fn activation(&self) -> f32 { self.activation() }
+
+    fn is_sensor(&self) -> bool { self.is_sensor() }
+
+    fn counter(&self) -> usize { self.counter() }
+
+    fn explain(&self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
+        self.explain()
+    }
+
+    fn activate(
+        &mut self, signal: f32, propagate_horizontal: bool, propagate_vertical: bool
+    ) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
+        self.activate(signal, propagate_horizontal, propagate_vertical)
+    }
+
+    fn deactivate(&mut self, propagate_horizontal: bool, propagate_vertical: bool) {
+        self.deactivate(propagate_horizontal, propagate_vertical)
     }
 }
 
@@ -332,9 +354,8 @@ impl NeuronConnectBilateral<SimpleNeuron> for SimpleNeuron {
 impl Display for SimpleNeuron {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(
-            f, "[{}|p:{}|c:{}|a:{}]", 
-            self.id().id, 
-            self.id().parent_id, 
+            f, "[{}|c:{}|a:{}]",
+            self.id(), 
             self.counter(), 
             self.activation()
         )
@@ -349,7 +370,7 @@ mod tests {
     };
 
     use bionet_common::{
-        neuron::{ Neuron, NeuronConnect, NeuronConnectBilateral, NeuronID },
+        neuron::{ NeuronConnect, NeuronConnectBilateral, NeuronID },
         connection::ConnectionKind
     };
 

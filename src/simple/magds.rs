@@ -2,6 +2,7 @@ use std::{
     rc::Rc,
     cell::RefCell,
     collections::HashMap,
+    fmt::{ Display, Formatter, Result as FmtResult }
 };
 
 use asa_graphs::neural::graph::ASAGraph;
@@ -164,6 +165,28 @@ impl MAGDS {
 
     pub fn neuron(&self, id: &str, parent_id: &str) -> Option<Rc<RefCell<SimpleNeuron>>> {
         Some(self.neurons.get(&NeuronID::new(id, parent_id))?.clone())
+    }
+}
+
+impl Display for MAGDS {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        writeln!(f, "========== sensors ==========")?;
+        let mut number = 1;
+        for (id, sensor) in &self.sensors {
+            writeln!(f, "{number}: {id}")?;
+            writeln!(f, "{}", sensor.borrow())?;
+            number += 1;
+        }
+
+        let mut number = 1;
+        writeln!(f, "========== neurons ==========")?;
+        for (id, neuron) in &self.neurons {
+            writeln!(f, "{number}: {}", neuron.borrow())?;
+            number += 1;
+        }
+
+        writeln!(f, "========== ======= ==========")?;
+        Ok(())
     }
 }
 
