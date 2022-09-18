@@ -20,7 +20,7 @@ use bionet_common::{
         defining_connection::DefiningConnection
     },
     sensor::SensorData,
-    data::DataDeductor
+    data::{ DataDeductor, DataTypeValue, DataType, DataTypeValueStr }
 };
 
 use asa_graphs::neural::element::Element;
@@ -93,10 +93,24 @@ impl SimpleNeuron {
 
     pub fn is_sensor(&self) -> bool { false }
 
+    pub fn data_type(&self) -> DataType { DataType::Unknown }
+
     pub fn counter(&self) -> usize { 1usize }
 
     pub fn explain(&self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
         self.defining_sensors()
+    }
+
+    fn explain_one(&self, parent: Rc<str>) -> Option<DataTypeValue> {
+        let defining_sensors = self.defining_sensors();
+        let sensor = defining_sensors.into_iter()
+            .filter(|(id, _sensor)| id.parent_id == parent)
+            .next()?.1;
+
+        let sensor_id = sensor.borrow().id().id;
+        let value_str = DataTypeValueStr(&sensor_id);
+        let sensor_data_type = sensor.borrow().data_type();
+        value_str.data_type_value(sensor_data_type)
     }
 
     pub fn activate(
@@ -139,10 +153,16 @@ impl Neuron for SimpleNeuron {
 
     fn is_sensor(&self) -> bool { self.is_sensor() }
 
+    fn data_type(&self) -> DataType { self.data_type() }
+
     fn counter(&self) -> usize { self.counter() }
 
     fn explain(&self) -> HashMap<NeuronID, Rc<RefCell<dyn Neuron>>> {
         self.explain()
+    }
+
+    fn explain_one(&self, parent: Rc<str>) -> Option<DataTypeValue> {
+        self.explain_one(parent)
     }
 
     fn activate(
@@ -253,7 +273,12 @@ impl NeuronConnect for SimpleNeuron {
 }
 
 impl<Key, const ORDER: usize> NeuronConnectBilateral<Element<Key, ORDER>> for SimpleNeuron 
-where Key: SensorData, [(); ORDER + 1]:, PhantomData<Key>: DataDeductor {
+where 
+    Key: SensorData, 
+    [(); ORDER + 1]:, 
+    PhantomData<Key>: DataDeductor,
+    DataTypeValue: From<Key>
+{
     fn connect_bilateral_to(&mut self, _to: Rc<RefCell<Element<Key, ORDER>>>, _kind: ConnectionKind) 
     -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         let msg = "only defining connection from Element to SimpleNeuron can be created";

@@ -13,7 +13,7 @@ use bionet_common::{
     neuron::{ Neuron, NeuronID, NeuronConnectBilateral },
     connection::ConnectionKind,
     sensor::{ Sensor, SensorData },
-    data::DataDeductor
+    data::{ DataDeductor, DataTypeValue }
 };
 
 use crate::{
@@ -90,7 +90,11 @@ pub(crate) fn connected_sensor_from_datavec(
     fn connector<T: SensorData>(
         magds: &mut MAGDS, id: &str, vec: &[Option<T>], neurons: &[Rc<RefCell<SimpleNeuron>>]
     ) -> Option<Rc<RefCell<SensorConatiner>>> 
-    where PhantomData<T>: DataDeductor, SensorConatiner: From<Box<dyn Sensor<T>>> {
+    where 
+        PhantomData<T>: DataDeductor, 
+        SensorConatiner: From<Box<dyn Sensor<T>>>,
+        DataTypeValue: From<T>
+    {
         assert_eq!(neurons.len(), vec.len());
         let mut sensor = ASAGraph::<T>::new_box(id);
         for (i, key) in vec.into_iter().enumerate() {

@@ -5,6 +5,7 @@
 pub mod neuron;
 pub mod dynamic;
 pub mod simple;
+pub mod algorithm;
 
 #[cfg(test)]
 mod tests {
