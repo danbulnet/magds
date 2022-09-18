@@ -1,7 +1,8 @@
 use std::{
     rc::Rc,
     cell::RefCell,
-    marker::PhantomData
+    marker::PhantomData,
+    path::Path
 };
 
 use polars::prelude::*;
@@ -174,6 +175,14 @@ pub fn magds_from_df(df_name: Rc<str>, df: &DataFrame) -> MAGDS {
     magds
 }
 
+pub fn magds_from_csv(name: &str, file_path: &str) -> Option<MAGDS> {
+    let path = Path::new(file_path);
+    if !path.is_file() || !file_path.ends_with(".csv") { return None }
+    let df = polars_common::csv_to_dataframe("data/iris.csv").ok()?;
+    let magds = magds_from_df(name.into(), &df);
+    Some(magds)
+}
+
 #[cfg(test)]
 mod tests {
     use polars::datatypes::DataType;
@@ -184,6 +193,22 @@ mod tests {
     };
 
     use crate::dynamic::magds::MAGDS;
+
+    #[test]
+    fn csv_to_magds() {
+        let magds = super::magds_from_csv("iris", "data/iris.csv").unwrap();
+        println!("{magds}");
+
+        let versicolor = 
+            magds.sensor_search("variety".into(), &"Versicolor".to_string().into()).unwrap();
+        let setosa = 
+            magds.sensor_search("variety".into(), &"Setosa".to_string().into()).unwrap();
+        let virginica = 
+            magds.sensor_search("variety".into(), &"Virginica".to_string().into()).unwrap();
+        assert_eq!(setosa.borrow().counter(), 49);
+        assert_eq!(versicolor.borrow().counter(), 50);
+        assert_eq!(virginica.borrow().counter(), 50);
+    }
 
     #[test]
     fn df_to_magds() {
