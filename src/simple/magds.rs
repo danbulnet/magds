@@ -139,7 +139,7 @@ impl MAGDS {
     ) -> Option<Rc<RefCell<SimpleNeuron>>> {
         let neuron = SimpleNeuron::new(id);
         let neuron_id = neuron.borrow().id().clone();
-        if let Err(e) = self.neurons.try_insert(neuron_id.clone(), neuron.clone()) {
+        if let Err(_) = self.neurons.try_insert(neuron_id.clone(), neuron.clone()) {
             log::error!("neuron id: {:?} already exsists in magds, skipping", neuron_id);
             None
         } else {
@@ -180,7 +180,7 @@ impl Display for MAGDS {
 
         let mut number = 1;
         writeln!(f, "========== neurons ==========")?;
-        for (id, neuron) in &self.neurons {
+        for (_id, neuron) in &self.neurons {
             writeln!(f, "{number}: {}", neuron.borrow())?;
             number += 1;
         }
@@ -200,14 +200,18 @@ mod tests {
     use asa_graphs::neural::graph::ASAGraph;
     
     use bionet_common::{
-        neuron::{ NeuronID, Neuron },
+        neuron::NeuronID,
         sensor::Sensor,
-        data::DataType
+        data::DataType,
+        polars as polars_common
     };
     
     use crate::neuron::simple_neuron::SimpleNeuron;
 
-    use super::MAGDS;
+    use super::{
+        MAGDS,
+        super::parser
+    };
 
     #[test]
     fn create_magds() {
@@ -283,5 +287,63 @@ mod tests {
         let text: Rc<str> = Rc::from("test");
         let sensor_element = magds.sensor_insert(Rc::from("rcstr_test"), &text.into());
         assert!(sensor_element.is_some())
+    }
+
+    #[test]
+    fn magds_activation() {
+        let df = polars_common::csv_to_dataframe("data/iris.csv").unwrap();
+        let magds = parser::magds_from_df("iris".into(), &df);
+        println!("{magds}");
+
+        let sl43 = magds.sensor_search("sepal.length".into(), &4.3_f64.into()).unwrap();
+        let sl57 = magds.sensor_search("sepal.length".into(), &5.7_f64.into()).unwrap();
+        let sl58 = magds.sensor_search("sepal.length".into(), &5.8_f64.into()).unwrap();
+        let sl59 = magds.sensor_search("sepal.length".into(), &5.9_f64.into()).unwrap();
+        let sl79 = magds.sensor_search("sepal.length".into(), &7.9_f64.into()).unwrap();
+        let neuron_15 = magds.neuron("15".into(), "iris".into()).unwrap();
+        let neuron_16 = magds.neuron("16".into(), "iris".into()).unwrap();
+        
+        sl58.borrow_mut().activate(1.0, false, false);
+        assert_eq!(sl57.borrow().activation(), 0.0_f32);
+        assert_eq!(sl58.borrow().activation(), 1.0_f32);
+        assert_eq!(sl59.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 0.0_f32);
+        
+        sl58.borrow_mut().deactivate(false, false);
+        assert_eq!(sl58.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 0.0_f32);
+
+        sl58.borrow_mut().activate(1.0, false, true);
+        assert_eq!(sl57.borrow().activation(), 0.0_f32);
+        assert_eq!(sl58.borrow().activation(), 1.0_f32);
+        assert_eq!(sl59.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 1.0_f32 / 7_f32);
+        assert_eq!(neuron_16.borrow().activation(), 0.0_f32);
+
+        sl58.borrow_mut().deactivate(false, false);
+        assert_eq!(sl58.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 1.0_f32 / 7_f32);
+
+        sl58.borrow_mut().deactivate(false, true);
+        assert_eq!(sl58.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 0.0_f32);
+
+        sl58.borrow_mut().activate(1.0, true, true);
+        assert_eq!(sl43.borrow().activation(), 0.0_f32);
+        assert_eq!(sl57.borrow().activation(), 0.9722222_f32);
+        assert_eq!(sl58.borrow().activation(), 1.0_f32);
+        assert_eq!(sl59.borrow().activation(), 0.9722222_f32);
+        assert_eq!(sl79.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 1.0_f32 / 7_f32);
+        assert_eq!(neuron_16.borrow().activation(), 0.9722222_f32 / 8_f32);
+
+        sl58.borrow_mut().deactivate(true, true);
+        assert_eq!(sl43.borrow().activation(), 0.0_f32);
+        assert_eq!(sl57.borrow().activation(), 0.0_f32);
+        assert_eq!(sl58.borrow().activation(), 0.0_f32);
+        assert_eq!(sl59.borrow().activation(), 0.0_f32);
+        assert_eq!(sl79.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_15.borrow().activation(), 0.0_f32);
+        assert_eq!(neuron_16.borrow().activation(), 0.0_f32);
     }
 }

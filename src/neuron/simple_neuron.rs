@@ -2,7 +2,8 @@ use std::{
     rc::{ Rc, Weak },
     cell::RefCell,
     collections::HashMap,
-    fmt::{ Display, Formatter, Result as FmtResult }
+    fmt::{ Display, Formatter, Result as FmtResult },
+    marker::PhantomData
 };
 
 use bionet_common::{
@@ -18,7 +19,8 @@ use bionet_common::{
         ConnectionID,
         defining_connection::DefiningConnection
     },
-    sensor::SensorData
+    sensor::SensorData,
+    data::DataDeductor
 };
 
 use asa_graphs::neural::element::Element;
@@ -106,9 +108,10 @@ impl SimpleNeuron {
         if propagate_vertical {
             for (_id, neuron) in &neurons.clone() {
                 if !neuron.borrow().is_sensor() {
+                    let output_signal = self.activation / self.defined_neurons().len() as f32;
                     neurons.extend(
                         neuron.borrow_mut().activate(
-                            self.activation, propagate_horizontal, propagate_vertical
+                            output_signal, propagate_horizontal, propagate_vertical
                         )
                     );
                 }
@@ -250,7 +253,7 @@ impl NeuronConnect for SimpleNeuron {
 }
 
 impl<Key, const ORDER: usize> NeuronConnectBilateral<Element<Key, ORDER>> for SimpleNeuron 
-where Key: SensorData, [(); ORDER + 1]: {
+where Key: SensorData, [(); ORDER + 1]:, PhantomData<Key>: DataDeductor {
     fn connect_bilateral_to(&mut self, _to: Rc<RefCell<Element<Key, ORDER>>>, _kind: ConnectionKind) 
     -> Result<Rc<RefCell<dyn Connection<From = dyn Neuron, To = dyn Neuron>>>, String> {
         let msg = "only defining connection from Element to SimpleNeuron can be created";
