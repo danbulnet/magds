@@ -178,7 +178,7 @@ pub fn magds_from_df(df_name: Rc<str>, df: &DataFrame) -> MAGDS {
 pub fn magds_from_csv(name: &str, file_path: &str) -> Option<MAGDS> {
     let path = Path::new(file_path);
     if !path.is_file() || !file_path.ends_with(".csv") { return None }
-    let df = polars_common::csv_to_dataframe("data/iris.csv").ok()?;
+    let df = polars_common::csv_to_dataframe(file_path).ok()?;
     let magds = magds_from_df(name.into(), &df);
     Some(magds)
 }
