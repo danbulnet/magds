@@ -123,7 +123,7 @@ where
     for (i, key) in vec.into_iter().enumerate() {
         if let Some(key) = key {
             if key == "" { continue }
-            
+
             let neuron_ptr = neurons[i].clone();
             let mut neuron = neuron_ptr.borrow_mut();
 

@@ -166,6 +166,11 @@ impl MAGDS {
     pub fn neuron(&self, id: &str, parent_id: &str) -> Option<Rc<RefCell<SimpleNeuron>>> {
         Some(self.neurons.get(&NeuronID::new(id, parent_id))?.clone())
     }
+
+    pub fn deactivate(&mut self) {
+        for sensor in &mut self.sensors.values() { sensor.borrow_mut().deactivate_sensor(); }
+        for neuron in &mut self.neurons.values() { neuron.borrow_mut().deactivate(false, false); }
+    } 
 }
 
 impl Display for MAGDS {
