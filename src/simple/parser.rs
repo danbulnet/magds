@@ -122,6 +122,8 @@ where
     let mut sensor = ASAGraph::<String>::new(id);
     for (i, key) in vec.into_iter().enumerate() {
         if let Some(key) = key {
+            if key == "" { continue }
+            
             let neuron_ptr = neurons[i].clone();
             let mut neuron = neuron_ptr.borrow_mut();
 
@@ -248,16 +250,22 @@ mod tests {
 
     use bionet_common::{
         polars as polars_common,
-        sensor::Sensor
+        sensor::Sensor,
+        data::DataTypeValue
     };
 
     use crate::simple::magds::MAGDS;
 
     #[test]
     fn vec_parse() {
-        let acura_file_path = "d:/BioNetLabs/GrapeUp/Toyota/KnowledgeModels/repo/knowledge-models-toyota/data/carscom_acura_train.csv";
-        let df = polars_common::csv_to_dataframe(acura_file_path).unwrap();
-        println!("{df}");
+        let magds = super::magds_from_csv("lists", "data/lists.csv").unwrap();
+        assert!(magds.sensor_search("x".into(), &DataTypeValue::String("a".into())).is_some());
+        assert!(magds.sensor_search("x".into(), &DataTypeValue::String("b".into())).is_some());
+        assert!(magds.sensor_search("y".into(), &DataTypeValue::String("a".into())).is_some());
+        assert!(magds.sensor_search("y".into(), &DataTypeValue::String("b".into())).is_some());
+        assert!(magds.sensor_search("z".into(), &DataTypeValue::String("a".into())).is_some());
+        assert!(magds.sensor_search("z".into(), &DataTypeValue::String("b".into())).is_some());
+        println!("{magds}");
     }
 
     #[test]
