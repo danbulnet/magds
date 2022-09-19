@@ -20,6 +20,7 @@ polars = { version = "0.23.2", features = [ "zip_with", "csv-file", "temporal", 
 enum-as-inner = "0.5.1"
 ordered-float = "3.0.0"
 regex = "1.6.0"
+test-log = "0.2.11"
 
 [dev-dependencies]
 pretty_assertions = "1.2.1"
